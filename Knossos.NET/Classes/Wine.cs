@@ -53,7 +53,8 @@ namespace Knossos.NET.Classes
                 using (var wine = new Process())
                 {
                     wine.StartInfo.FileName = "wine";
-                    wine.StartInfo.Arguments = exePath + " " + exeCmdLine;
+                    wine.StartInfo.Arguments = $"\"{exePath}\"" + " " + exeCmdLine;
+                    Log.Add(Log.LogSeverity.Information, "Wine.RunTool()", "args => " + wine.StartInfo.Arguments);
                     if (workingFolder != null)
                     {
                         wine.StartInfo.WorkingDirectory = workingFolder;
@@ -102,7 +103,8 @@ namespace Knossos.NET.Classes
                 using (var wine = new Process())
                 {
                     wine.StartInfo.FileName = "wine";
-                    wine.StartInfo.Arguments = exePath + " " + exeCmdLine;
+                    wine.StartInfo.Arguments = $"\"{exePath}\"" + " " + exeCmdLine;
+                    Log.Add(Log.LogSeverity.Information, "Wine.RunFred2()", "args => " + wine.StartInfo.Arguments);
                     if (workingFolder != null)
                     {
                         wine.StartInfo.WorkingDirectory = workingFolder;
