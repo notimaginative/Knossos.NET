@@ -293,15 +293,23 @@ namespace IonKiwi.lz4 {
             /* Num Offsets */
             inputStream.Position = initialPosition + compressedFileSize.Value - 12;
             int numOffsets = br.ReadInt32();
+            if (numOffsets <= 0 || numOffsets > (compressedFileSize.Value - 12) / 4)
+                throw new Exception($"Invalid numOffsets in LZ41 footer: {numOffsets}");
 
             /* File Size */
-            if(!length.HasValue) 
+            if(!length.HasValue)
+            {
                 length = br.ReadInt32();
+                if (length <= 0)
+                    throw new Exception($"Invalid uncompressed size in LZ41 footer: {length}");
+            }
             else
                 inputStream.Position += 4;
 
             /* Block Size */
             int blockSize = br.ReadInt32();
+            if (blockSize <= 0)
+                throw new Exception($"Invalid block size in LZ41 footer: {blockSize}");
 
             /* Read the offsets tail */
             inputStream.Position = initialPosition + (compressedFileSize.Value - 12 - (numOffsets * 4));
@@ -314,6 +322,9 @@ namespace IonKiwi.lz4 {
             /* The blocks [currentBlock to endBlock] contain the data we want */
             int currentBlock = offset.Value / blockSize;
             int endBlock = ((offset.Value + length.Value - 1) / blockSize) + 1;
+
+            if (currentBlock < 0 || endBlock >= numOffsets)
+                throw new Exception($"Requested range exceeds block table (blocks {currentBlock}–{endBlock}, numOffsets={numOffsets})");
 
             /* Seek to the first block to read */
             inputStream.Position = initialPosition + offsets[currentBlock];
