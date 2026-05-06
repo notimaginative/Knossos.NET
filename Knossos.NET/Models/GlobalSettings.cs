@@ -954,8 +954,8 @@ namespace Knossos.NET.Models
             var cmd = string.Empty;
             if(shadowQuality > 0)
             {
-                cmd += "-enable_shadows";
-                cmd += "-shadow_quality " + shadowQuality;
+                cmd += " -enable_shadows";
+                cmd += " -shadow_quality " + shadowQuality;
             }
             if(aaPreset > 0)
             {
@@ -964,8 +964,8 @@ namespace Knossos.NET.Models
                 var flag_aaPreset = aaPreset - 1;
                 if (build == null || SemanticVersion.Compare(build.version, "21.0.0") >= 0)
                 {
-                    cmd += "-aa";
-                    cmd += "-aa_preset " + flag_aaPreset;
+                    cmd += " -aa";
+                    cmd += " -aa_preset " + flag_aaPreset;
                 }
                 else
                 {
@@ -973,23 +973,23 @@ namespace Knossos.NET.Models
                     {
                         if (flag_aaPreset <= 2)
                         {
-                            cmd += "-fxaa";
+                            cmd += " -fxaa";
                             switch (flag_aaPreset)
                             {
-                                case 0: cmd += "-fxaa_preset 1"; break;
-                                case 1: cmd += "-fxaa_preset 5"; break;
-                                case 2: cmd += "-fxaa_preset 7"; break;
+                                case 0: cmd += " -fxaa_preset 1"; break;
+                                case 1: cmd += " -fxaa_preset 5"; break;
+                                case 2: cmd += " -fxaa_preset 7"; break;
                             }
                         }
                         else
                         {
-                            cmd += "-smaa";
+                            cmd += " -smaa";
                             switch (flag_aaPreset)
                             {
-                                case 3: cmd += "-smaa_preset 0"; break;
-                                case 4: cmd += "-smaa_preset 1"; break;
-                                case 5: cmd += "-smaa_preset 2"; break;
-                                case 6: cmd += "-smaa_preset 3"; break;
+                                case 3: cmd += " -smaa_preset 0"; break;
+                                case 4: cmd += " -smaa_preset 1"; break;
+                                case 5: cmd += " -smaa_preset 2"; break;
+                                case 6: cmd += " -smaa_preset 3"; break;
                             }
                         }
                     }
@@ -999,47 +999,47 @@ namespace Knossos.NET.Models
             {
                 switch (msaaPreset)
                 {
-                    case 1: cmd += "-msaa 4"; break;
-                    case 2: cmd += "-msaa 8"; break;
+                    case 1: cmd += " -msaa 4"; break;
+                    case 2: cmd += " -msaa 8"; break;
                 }
             }
             if (enableSoftParticles)
             {
-                cmd += "-soft_particles";
+                cmd += " -soft_particles";
             }
             if (!enableDeferredLighting)
             {
-                cmd += "-no_deferred";
+                cmd += " -no_deferred";
             }
             switch (windowMode)
             {
-                case 0: cmd += "-window"; break;
-                case 1: cmd += "-fullscreen_window"; break;
+                case 0: cmd += " -window"; break;
+                case 1: cmd += " -fullscreen_window"; break;
                 case 2: break; //fullscreen
             }
             if (!vsync)
             {
-                cmd += "-no_vsync";
+                cmd += " -no_vsync";
             }
             if(!postProcess)
             {
-                cmd += "-no_post_process";
+                cmd += " -no_post_process";
             }
             if (noFpsCapping)
             {
-                cmd += "-no_fps_capping";
+                cmd += " -no_fps_capping";
             }
             if(showFps)
             {
-                cmd += "-fps";
+                cmd += " -fps";
             }
             if(disableAudio)
             {
-                cmd += "-nosound";
+                cmd += " -nosound";
             }
             if(disableMusic)
             {
-                cmd += "-nomusic";
+                cmd += " -nomusic";
             }
             return cmd;
         }
