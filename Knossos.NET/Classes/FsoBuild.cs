@@ -320,7 +320,7 @@ namespace Knossos.NET.Models
         /// Get FSO flags structure of this build using the JSON format V1
         /// </summary>
         /// <returns>A FlagsJsonV1 structure or null if failed</returns>
-        public FlagsJsonV1? GetFlagsV1()
+        public async Task<FlagsJsonV1?> GetFlagsV1Async()
         {
             var executable = GetExecutable(FsoExecType.Flags);
             var fullpath = GetExecutablePath(executable);
@@ -374,10 +374,15 @@ namespace Knossos.NET.Models
                     }
 
                     cmd.Start();
-                    string result = cmd.StandardOutput.ReadToEnd();
-                    stderr = cmd.StandardError.ReadToEnd();
+                    // Read stdout and stderr concurrently to prevent pipe deadlock.
+                    // Sequential reads deadlock if stderr output exceeds the pipe buffer (~4 KB).
+                    var stdoutTask = cmd.StandardOutput.ReadToEndAsync();
+                    var stderrTask = cmd.StandardError.ReadToEndAsync();
+                    await Task.WhenAll(stdoutTask, stderrTask).ConfigureAwait(false);
+                    string result = stdoutTask.Result;
+                    stderr = stderrTask.Result;
                     output = result;
-                    cmd.WaitForExit();
+                    await cmd.WaitForExitAsync().ConfigureAwait(false);
 
                     if (KnUtils.IsLinux && !string.IsNullOrEmpty(stderr))
                     {
@@ -395,7 +400,7 @@ namespace Knossos.NET.Models
                             if (!_flagErrorOneWarn)
                             {
                                 _flagErrorOneWarn = true;
-                                Dispatcher.UIThread.Invoke(async () => { await MessageBox.Show(MainWindow.instance, libfuseError, "Unable to run FSO", MessageBox.MessageBoxButtons.OK); });
+                                await Dispatcher.UIThread.InvokeAsync(async () => { await MessageBox.Show(MainWindow.instance, libfuseError, "Unable to run FSO", MessageBox.MessageBoxButtons.OK); });
                             }
                         }
                         else
@@ -404,7 +409,7 @@ namespace Knossos.NET.Models
                             if (!_flagErrorOneWarn)
                             {
                                 _flagErrorOneWarn = true;
-                                Dispatcher.UIThread.Invoke(async ()=> { await MessageBox.Show(MainWindow.instance, stderr, "Unable to run FSO", MessageBox.MessageBoxButtons.OK); });
+                                await Dispatcher.UIThread.InvokeAsync(async () => { await MessageBox.Show(MainWindow.instance, stderr, "Unable to run FSO", MessageBox.MessageBoxButtons.OK); });
                             }
                         }
                         return null;

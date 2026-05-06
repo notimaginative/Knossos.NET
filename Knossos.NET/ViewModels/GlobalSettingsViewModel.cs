@@ -588,10 +588,13 @@ namespace Knossos.NET.ViewModels
         /// Loads data from the GlobalSettings.cs class into this one to display it in the UI
         /// Also loads flag data from a FSO build, if one is installed
         /// </summary>
-        public void LoadData()
+        public async Task LoadDataAsync()
         {
             var old_path = KnUtils.GetFSODataFolderPath();
-            var flagData = GetFlagData();
+            // Fetch flag data on a background thread so the UI thread stays responsive.
+            // await resumes on Avalonia's UI synchronization context, so all ObservableProperty
+            // assignments below are safe.
+            var flagData = await Task.Run(GetFlagDataAsync);
 
             // reset the ini info if we have gotten an updated preferred path from FSO.
             if (old_path != KnUtils.GetFSODataFolderPath()){
@@ -1090,7 +1093,7 @@ namespace Knossos.NET.ViewModels
             UnCommitedChanges = false;
         }
 
-        private FlagsJsonV1? GetFlagData()
+        private async Task<FlagsJsonV1?> GetFlagDataAsync()
         {
             FlagDataLoaded = false;
             var builds = Knossos.GetInstalledBuildsList();
@@ -1103,7 +1106,7 @@ namespace Knossos.NET.ViewModels
                     stables.Sort(FsoBuild.CompareVersion);
                     foreach (var stable in stables)
                     {
-                        var flags = stable.GetFlagsV1();
+                        var flags = await stable.GetFlagsV1Async().ConfigureAwait(false);
                         if (flags != null)
                         {
                             FlagDataLoaded = true;
@@ -1120,7 +1123,7 @@ namespace Knossos.NET.ViewModels
                 {
                     foreach (var other in others)
                     {
-                        var flags = other.GetFlagsV1();
+                        var flags = await other.GetFlagsV1Async().ConfigureAwait(false);
                         if (flags != null)
                         {
                             FlagDataLoaded = true;
@@ -1168,7 +1171,7 @@ namespace Knossos.NET.ViewModels
                         Knossos.globalSettings.basePath = result[0].Path.LocalPath.ToString();
                         Knossos.globalSettings.Save();
                         Knossos.ResetBasePath();
-                        LoadData();
+                        await LoadDataAsync();
                     }
                 } 
                 catch (Exception ex) 
@@ -1184,12 +1187,12 @@ namespace Knossos.NET.ViewModels
         /// <summary>
         /// Reload data from json
         /// </summary>
-        internal void ResetCommand()
+        internal async void ResetCommand()
         {
             var pxoUser = Knossos.globalSettings.pxoLogin;
             var pxoPassword = Knossos.globalSettings.pxoPassword;
             Knossos.globalSettings = new GlobalSettings();
-            LoadData();
+            await LoadDataAsync();
             Knossos.globalSettings.pxoPassword = pxoPassword;
             Knossos.globalSettings.pxoLogin = pxoUser;
             SaveCommand();
@@ -1465,10 +1468,10 @@ namespace Knossos.NET.ViewModels
         /// <summary>
         /// Reloads configuration and FSO flag data
         /// </summary>
-        internal void ReloadFlagData()
+        internal async void ReloadFlagData()
         {
             Knossos.globalSettings.Load();
-            LoadData();
+            await LoadDataAsync();
         }
 
         /// <summary>
