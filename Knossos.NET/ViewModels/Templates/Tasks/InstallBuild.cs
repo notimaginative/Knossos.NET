@@ -231,8 +231,13 @@ namespace Knossos.NET.ViewModels
                         {
                             if (file.dest != null && file.dest.Trim() != string.Empty)
                             {
-                                var path = file.dest;
-                                Directory.CreateDirectory(modPath + Path.DirectorySeparatorChar + path);
+                                if (!KnUtils.IsSubPath(modPath, file.dest))
+                                {
+                                    Log.Add(Log.LogSeverity.Error, "TaskItemViewModel.InstallBuild()", $"Unsafe dest path in build '{build.id}': {file.dest}");
+                                    CancelTaskCommand();
+                                    return false;
+                                }
+                                Directory.CreateDirectory(modPath + Path.DirectorySeparatorChar + file.dest);
                             }
                         }
 
@@ -277,6 +282,12 @@ namespace Knossos.NET.ViewModels
                             }
 
                             Info = "Tasks: " + ProgressCurrent + "/" + ProgressBarMax;
+                            if (!KnUtils.IsSubPath(modPath, file.filename))
+                            {
+                                Log.Add(Log.LogSeverity.Error, "TaskItemViewModel.InstallBuild()", $"Unsafe filename in build '{build.id}': {file.filename}");
+                                CancelTaskCommand();
+                                throw new TaskCanceledException();
+                            }
                             var fileFullPath = modPath + Path.DirectorySeparatorChar + file.filename;
                             var result = await fileTask.DownloadFile(file.urls!, fileFullPath, "Downloading " + file.filename, false, null, cancellationTokenSource);
 
