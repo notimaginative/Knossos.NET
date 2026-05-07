@@ -235,7 +235,6 @@ namespace Knossos.NET.ViewModels
                                 {
                                     Log.Add(Log.LogSeverity.Error, "TaskItemViewModel.InstallBuild()", $"Unsafe dest path in build '{build.id}': {file.dest}");
                                     CancelTaskCommand();
-                                    return false;
                                 }
                                 Directory.CreateDirectory(modPath + Path.DirectorySeparatorChar + file.dest);
                             }
@@ -282,7 +281,7 @@ namespace Knossos.NET.ViewModels
                             }
 
                             Info = "Tasks: " + ProgressCurrent + "/" + ProgressBarMax;
-                            if (!KnUtils.IsSubPath(modPath, file.filename))
+                            if (string.IsNullOrEmpty(file.filename) || !KnUtils.IsSubPath(modPath, file.filename))
                             {
                                 Log.Add(Log.LogSeverity.Error, "TaskItemViewModel.InstallBuild()", $"Unsafe filename in build '{build.id}': {file.filename}");
                                 CancelTaskCommand();

@@ -351,7 +351,7 @@ namespace Knossos.NET.ViewModels
                             {
                                 file.dest = string.Empty;
                             }
-                            if (!KnUtils.IsSubPath(modPath, file.filename))
+                            if (string.IsNullOrEmpty(file.filename) || !KnUtils.IsSubPath(modPath, file.filename))
                             {
                                 Log.Add(Log.LogSeverity.Error, "TaskItemViewModel.InstallMod()", $"Unsafe filename in mod '{mod.id}': {file.filename}");
                                 CancelTaskCommand();
