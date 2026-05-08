@@ -593,6 +593,19 @@ namespace Knossos.NET
         }
 
         /// <summary>
+        /// Splits a cmdline string into individual flag arguments. Splits on a '-' that is
+        /// preceded by start-of-string or whitespace, so hyphens inside flag values (e.g. paths)
+        /// are preserved.
+        /// </summary>
+        /// <param name="cmdline"></param>
+        /// <returns>array of flag arguments (without the leading '-'), or null if input is null</returns>
+        public static string[]? SplitCmdLineFlags(string? cmdline)
+        {
+            if (cmdline == null) return null;
+            return Regex.Split(cmdline, @"(?<=^|\s)-");
+        }
+
+        /// <summary>
         /// Adds arguments to a cmdline string, only if they arent already present
         /// </summary>
         /// <param name="cmdline"></param>
@@ -605,7 +618,7 @@ namespace Knossos.NET
                 if (args != null && args.Any())
                 {
                     var addedArgs = new List<string>();
-                    foreach (var arg in cmdline.ToLower().Split('-'))
+                    foreach (var arg in SplitCmdLineFlags(cmdline.ToLower()) ?? Array.Empty<string>())
                     {
                         addedArgs.Add(arg.Split(' ')[0].Trim());
                     }
