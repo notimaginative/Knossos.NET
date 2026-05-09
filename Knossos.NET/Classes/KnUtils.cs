@@ -630,6 +630,28 @@ namespace Knossos.NET
         }
 
         /// <summary>
+        /// Returns true if candidatePath resolves to a location within basePath.
+        /// Rejects absolute paths, null bytes, and path traversal sequences such as "..".
+        /// </summary>
+        public static bool IsSubPath(string basePath, string candidatePath)
+        {
+            if (string.IsNullOrEmpty(candidatePath))
+                return true;
+            if (Path.IsPathRooted(candidatePath))
+                return false;
+            try
+            {
+                var fullBase = Path.GetFullPath(basePath).TrimEnd(Path.DirectorySeparatorChar) + Path.DirectorySeparatorChar;
+                var fullTarget = Path.GetFullPath(Path.Combine(basePath, candidatePath));
+                return fullTarget.StartsWith(fullBase, StringComparison.OrdinalIgnoreCase);
+            }
+            catch
+            {
+                return false;
+            }
+        }
+
+        /// <summary>
         /// Gets the complete size of all files in a folder and subdirectories in bytes
         /// </summary>
         /// <param name="folderPath"></param>
@@ -1009,7 +1031,24 @@ namespace Knossos.NET
                             {
                                 if (!reader.Entry.IsDirectory)
                                 {
-                                    reader.WriteEntryToDirectory(destFolderPath, new ExtractionOptions() { ExtractFullPath = extractFullPath, Overwrite = true, WriteSymbolicLink = (source, target) => { File.CreateSymbolicLink(source, target); } });
+                                    var entryKey = reader.Entry.Key?.Replace('\\', '/').Replace('/', Path.DirectorySeparatorChar);
+                                    if (entryKey != null && extractFullPath && !IsSubPath(destFolderPath, entryKey))
+                                    {
+                                        Log.Add(Log.LogSeverity.Warning, "KnUtils.DecompressFileSharpCompress()", $"Skipping potentially dangerous archive entry: {reader.Entry.Key}");
+                                        continue;
+                                    }
+                                    reader.WriteEntryToDirectory(destFolderPath, new ExtractionOptions() { ExtractFullPath = extractFullPath, Overwrite = true, WriteSymbolicLink = (source, target) =>
+                                    {
+                                        var resolvedTarget = Path.IsPathRooted(target)
+                                            ? target
+                                            : Path.GetFullPath(Path.Combine(Path.GetDirectoryName(source)!, target));
+                                        if (!IsSubPath(destFolderPath, Path.GetRelativePath(destFolderPath, resolvedTarget)))
+                                        {
+                                            Log.Add(Log.LogSeverity.Warning, "KnUtils.DecompressFileSharpCompress()", $"Skipping symlink escaping destination: {source} -> {target}");
+                                            return;
+                                        }
+                                        File.CreateSymbolicLink(source, target);
+                                    }});
                                 }
                                 if (cancellationTokenSource!.IsCancellationRequested)
                                 {
@@ -1028,6 +1067,12 @@ namespace Knossos.NET
                             {
                                 if (!reader.Entry.IsDirectory)
                                 {
+                                    var entryKey = reader.Entry.Key?.Replace('\\', '/').Replace('/', Path.DirectorySeparatorChar);
+                                    if (entryKey != null && extractFullPath && !IsSubPath(destFolderPath, entryKey))
+                                    {
+                                        Log.Add(Log.LogSeverity.Warning, "KnUtils.DecompressFileSharpCompress()", $"Skipping potentially dangerous archive entry: {reader.Entry.Key}");
+                                        continue;
+                                    }
                                     reader.WriteEntryToDirectory(destFolderPath, new ExtractionOptions() { ExtractFullPath = extractFullPath, Overwrite = true });
                                 }
                                 if (cancellationTokenSource!.IsCancellationRequested)
