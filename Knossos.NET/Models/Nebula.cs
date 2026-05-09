@@ -715,7 +715,10 @@ namespace Knossos.NET.Models
 
             [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
             public bool done { get; set; }
-          
+
+            [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+            public bool gatewayTimeout { get; set; }
+
             [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
             public Mod mod { get; set; }
         }
@@ -815,14 +818,21 @@ namespace Knossos.NET.Models
                                     }
                                 }
                                 data.Dispose();
-                                /* Upload/Update/delete Mod Timeout Hack */
-                                if(response.StatusCode.ToString() == "GatewayTimeout" && (resourceUrl == "mod/release" || resourceUrl == "mod/release/update" || resourceUrl == "mod/release/delete" || resourceUrl == "multiupload/finish"))
+                                if (response.StatusCode == System.Net.HttpStatusCode.GatewayTimeout)
                                 {
-                                    Log.Add(Log.LogSeverity.Warning, "Nebula.ApiCall(" + resourceUrl + ")", "A GatewayTimeout was received. This is a known issue with Nebula and while Knet handles this" +
-                                        " as a success there is not an actual way to know if the api call was really successfull.");
-                                    var reply = new ApiReply();
-                                    reply.result = true;
-                                    return reply;
+                                    if (resourceUrl == "multiupload/finish")
+                                    {
+                                        /* Finish() has retry + CheckUploadDone() verification for null replies — let it handle this */
+                                        Log.Add(Log.LogSeverity.Warning, "Nebula.ApiCall(" + resourceUrl + ")", "A GatewayTimeout was received. Returning null so Finish() can verify server state.");
+                                        return null;
+                                    }
+                                    if (resourceUrl == "mod/release" || resourceUrl == "mod/release/update" || resourceUrl == "mod/release/delete")
+                                    {
+                                        Log.Add(Log.LogSeverity.Warning, "Nebula.ApiCall(" + resourceUrl + ")", "A GatewayTimeout was received. Operation status is unknown — the server may have processed the request after the proxy timed out.");
+                                        var reply = new ApiReply();
+                                        reply.gatewayTimeout = true;
+                                        return reply;
+                                    }
                                 }
                             }
                             Log.Add(Log.LogSeverity.Error, "Nebula.ApiCall(" + resourceUrl + ")", "An error has ocurred during nebula api POST call: " + response.StatusCode + "(" + (int)response.StatusCode + ")");
@@ -1433,6 +1443,11 @@ namespace Knossos.NET.Models
                         Log.Add(Log.LogSeverity.Information, "Nebula.DeleteModVersion", "Deleted mod/version : " + mod + " from Nebula.");
                         return "ok";
                     }
+                    else if (reply.Value.gatewayTimeout)
+                    {
+                        Log.Add(Log.LogSeverity.Warning, "Nebula.DeleteModVersion", "Server timed out. The deletion may or may not have succeeded. Please verify on the Nebula website.");
+                        return "Server timed out — please verify the deletion on the Nebula website.";
+                    }
                     else
                     {
                         Log.Add(Log.LogSeverity.Error, "Nebula.DeleteModVersion", "Error while deleting mod/version: " + mod + " Reason: " + reply.Value.reason);
@@ -1694,6 +1709,11 @@ namespace Knossos.NET.Models
                         Log.Add(Log.LogSeverity.Information, "Nebula.ReleaseMod", "ReleaseMod: " + mod + " OK!");
                         return "ok";
                     }
+                    else if (reply.Value.gatewayTimeout)
+                    {
+                        Log.Add(Log.LogSeverity.Warning, "Nebula.ReleaseMod", "Server timed out. The release may or may not have succeeded. Please verify on the Nebula website.");
+                        return "Server timed out — please verify the release on the Nebula website.";
+                    }
                     else
                     {
                         Log.Add(Log.LogSeverity.Error, "Nebula.ReleaseMod", "ReleaseMod: " + mod + " error. Reason: " + reply.Value.reason);
@@ -1729,6 +1749,11 @@ namespace Knossos.NET.Models
                     {
                         Log.Add(Log.LogSeverity.Information, "Nebula.UpdateMetaData", "UpdateMetaData: " + mod + " OK!");
                         return "ok";
+                    }
+                    else if (reply.Value.gatewayTimeout)
+                    {
+                        Log.Add(Log.LogSeverity.Warning, "Nebula.UpdateMetaData", "Server timed out. The metadata update may or may not have succeeded. Please verify on the Nebula website.");
+                        return "Server timed out — please verify the metadata update on the Nebula website.";
                     }
                     else
                     {
