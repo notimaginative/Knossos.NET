@@ -235,6 +235,7 @@ namespace Knossos.NET.ViewModels
                                 {
                                     Log.Add(Log.LogSeverity.Error, "TaskItemViewModel.InstallBuild()", $"Unsafe dest path in build '{build.id}': {file.dest}");
                                     CancelTaskCommand();
+                                    return null;
                                 }
                                 Directory.CreateDirectory(modPath + Path.DirectorySeparatorChar + file.dest);
                             }
@@ -359,6 +360,7 @@ namespace Knossos.NET.ViewModels
                             {
                                 Log.Add(Log.LogSeverity.Error, "TaskItemViewModel.InstallBuild()", "Error while decompressing the file " + fileFullPath);
                                 CancelTaskCommand();
+                                throw new TaskCanceledException();
                             }
                             //sender.ProgressBarCurrent = ++ProgressCurrent;
                             ++ProgressCurrent;

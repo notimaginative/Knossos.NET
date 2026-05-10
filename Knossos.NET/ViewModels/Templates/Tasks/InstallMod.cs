@@ -415,6 +415,7 @@ namespace Knossos.NET.ViewModels
                             {
                                 Log.Add(Log.LogSeverity.Error, "TaskItemViewModel.InstallMod()", "Error while decompressing the file " + fileFullPath);
                                 CancelTaskCommand();
+                                throw new TaskCanceledException();
                             }
                             File.Delete(fileFullPath);
                             ++ProgressCurrent;
