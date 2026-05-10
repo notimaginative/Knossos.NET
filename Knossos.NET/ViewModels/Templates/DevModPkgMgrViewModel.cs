@@ -90,34 +90,21 @@ namespace Knossos.NET.ViewModels
 
                     FillAllVersions();
 
-                    var currentVersion = VersionItems.FirstOrDefault(x => x.Content != null && dep.version != null && x.Content.ToString() == dep.version.Trim().Replace(">=", "").Replace("<=", "").Replace(">", "").Replace("<", "").Replace("~", ""));
+                    versionTypeIndex = OperatorTypeIndexFromVersion(dep.version);
+
+                    var bareVersion = dep.version != null ? StripVersionOperators(dep.version) : null;
+                    var currentVersion = VersionItems.FirstOrDefault(x => x.Content != null && bareVersion != null && x.Content.ToString() == bareVersion);
                     if (currentVersion != null)
                     {
                         versionSelectedIndex = VersionItems.IndexOf(currentVersion);
-                        if (dep.version!.Contains("~"))
-                        {
-                            versionTypeIndex = 2;
-                        }
-                        else if (dep.version!.Contains(">="))
-                        {
-                            versionTypeIndex = 1;
-                        }
-                        else if (dep.version!.Contains("<="))
-                        {
-                            versionTypeIndex = 3;
-                        }
-                        else if (dep.version!.Contains(">"))
-                        {
-                            versionTypeIndex = 4;
-                        }
-                        else if (dep.version!.Contains("<"))
-                        {
-                            versionTypeIndex = 5;
-                        }
-                        else
-                        {
-                            versionTypeIndex = 0;
-                        }
+                    }
+                    else if (!string.IsNullOrEmpty(bareVersion))
+                    {
+                        //Requested version isn't installed — surface it as its own entry so the UI matches the JSON.
+                        var itemVer = new ComboBoxItem();
+                        itemVer.Content = bareVersion;
+                        VersionItems.Add(itemVer);
+                        versionSelectedIndex = VersionItems.Count - 1;
                     }
                     else
                     {
@@ -135,37 +122,9 @@ namespace Knossos.NET.ViewModels
                     itemMod.IsEnabled = false; //Important! This signals that on writing to return the original depedency data to avoid possible loss of dep data
                     ModItems.Insert(0, itemMod);
                     ModSelectedIndex = 0;
-                    if (dep.version != null) // Make sure we hae a version to read.
-                    {
-                        if (dep.version!.Contains("~"))
-                        {
-                            VersionTypeIndex = 2;
-                        }
-                        else if (dep.version!.Contains(">="))
-                        {
-                            VersionTypeIndex = 1;
-                        }
-                        else if (dep.version!.Contains("<="))
-                        {
-                            VersionTypeIndex = 3;
-                        }
-                        else if (dep.version!.Contains(">"))
-                        {
-                            VersionTypeIndex = 4;
-                        }
-                        else if (dep.version!.Contains("<"))
-                        {
-                            VersionTypeIndex = 5;
-                        }
-                        else
-                        {
-                            VersionTypeIndex = 0;
-                        }
-                    } else {
-                        VersionTypeIndex = 0;
-                    }
+                    VersionTypeIndex = OperatorTypeIndexFromVersion(dep.version);
                     var itemVer = new ComboBoxItem();
-                    itemVer.Content = dep.version != null ? dep.version.Replace(">=", "").Replace("<=", "").Replace(">", "").Replace("<", "").Replace("~", "") : "Any";
+                    itemVer.Content = dep.version != null ? StripVersionOperators(dep.version) : "Any";
                     VersionItems.Add(itemVer);
                 }
             }
@@ -291,6 +250,25 @@ namespace Knossos.NET.ViewModels
                 {
                     Log.Add(Log.LogSeverity.Error, "EditorDependencyItem.FillPackages()", ex);
                 }
+            }
+
+            //Maps a dependency version string to the matching index in the version-type combobox
+            //(0 == exact, 1 >=, 2 ~, 3 <=, 4 >, 5 <).
+            private static int OperatorTypeIndexFromVersion(string? version)
+            {
+                if (version == null) return 0;
+                if (version.Contains("~")) return 2;
+                if (version.Contains(">=")) return 1;
+                if (version.Contains("<=")) return 3;
+                if (version.Contains(">")) return 4;
+                if (version.Contains("<")) return 5;
+                return 0;
+            }
+
+            private static string StripVersionOperators(string version)
+            {
+                return version.Trim().Replace(">=", "").Replace("<=", "")
+                                     .Replace(">", "").Replace("<", "").Replace("~", "");
             }
 
             internal void DeleteDependency()
