@@ -1038,7 +1038,7 @@ namespace Knossos.NET
                     //tar.gz
                     if (compressedFilePath!.ToLower().Contains(".tar") || compressedFilePath.ToLower().Contains(".gz"))
                     {
-                        using (var reader = ReaderFactory.Open(fileStream))
+                        using (var reader = ReaderFactory.OpenReader(fileStream))
                         {
                             while (reader.MoveToNextEntry())
                             {
@@ -1050,18 +1050,42 @@ namespace Knossos.NET
                                         Log.Add(Log.LogSeverity.Warning, "KnUtils.DecompressFileSharpCompress()", $"Skipping potentially dangerous archive entry: {reader.Entry.Key}");
                                         continue;
                                     }
-                                    reader.WriteEntryToDirectory(destFolderPath, new ExtractionOptions() { ExtractFullPath = extractFullPath, Overwrite = true, WriteSymbolicLink = (source, target) =>
+
+                                    if (reader.Entry.Key == null)
                                     {
-                                        var resolvedTarget = Path.IsPathRooted(target)
-                                            ? target
-                                            : Path.GetFullPath(Path.Combine(Path.GetDirectoryName(source)!, target));
-                                        if (!IsSubPath(destFolderPath, Path.GetRelativePath(destFolderPath, resolvedTarget)))
+                                        continue;
+                                    }
+
+                                    var destinationPath = Path.Combine(destFolderPath, reader.Entry.Key);
+
+                                    // Detect SymbLink
+                                    if (reader.Entry.LinkTarget != null)
+                                    {
+                                        try
                                         {
-                                            Log.Add(Log.LogSeverity.Warning, "KnUtils.DecompressFileSharpCompress()", $"Skipping symlink escaping destination: {source} -> {target}");
-                                            return;
+                                            var resolvedTarget = Path.IsPathRooted(reader.Entry.LinkTarget)
+                                                ? reader.Entry.LinkTarget
+                                                : Path.GetFullPath(Path.Combine(Path.GetDirectoryName(destinationPath)!, reader.Entry.LinkTarget));
+                                            if (!IsSubPath(destFolderPath, Path.GetRelativePath(destFolderPath, resolvedTarget)))
+                                            {
+                                                Log.Add(Log.LogSeverity.Warning, "KnUtils.DecompressFileSharpCompress()", $"Skipping symlink escaping destination: {destinationPath} -> {reader.Entry.LinkTarget}");
+                                                continue;
+                                            }
+                                            File.CreateSymbolicLink(destinationPath, reader.Entry.LinkTarget);
                                         }
-                                        File.CreateSymbolicLink(source, target);
-                                    }});
+                                        catch (Exception ex)
+                                        {
+                                            Log.Add(Log.LogSeverity.Error, "KnUtils.DecompressFileSharpCompress()", ex);
+                                        }
+                                    }
+                                    else
+                                    {
+                                        reader.WriteEntryToFile(destinationPath, new ExtractionOptions
+                                        {
+                                            ExtractFullPath = extractFullPath,
+                                            Overwrite = true
+                                        });
+                                    }
                                 }
                                 if (cancellationTokenSource!.IsCancellationRequested)
                                 {
@@ -1073,7 +1097,7 @@ namespace Knossos.NET
                     else
                     {
                         //zip, 7z
-                        using (var archive = ArchiveFactory.Open(fileStream))
+                        using (var archive = ArchiveFactory.OpenArchive(fileStream))
                         {
                             var reader = archive.ExtractAllEntries();
                             while (reader.MoveToNextEntry())
