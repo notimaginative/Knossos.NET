@@ -107,6 +107,27 @@ namespace Knossos.NET.ViewModels
                         -If devmode and file is a vp it needs to be decompressed +1 to max tasks
                     */
 
+                    //Reject mod metadata with traversal sequences in path-component fields. Without this guard a
+                    //malicious Nebula response (id="..\\..\\..", version="../etc"...) would poison modPath itself,
+                    //causing the IsSubPath checks on file.dest / file.filename below to validate against the poisoned base.
+                    if (!KnUtils.IsSafePathComponent(mod.id) ||
+                        !KnUtils.IsSafePathComponent(mod.version) ||
+                        (mod.parent != null && !KnUtils.IsSafePathComponent(mod.parent)))
+                    {
+                        Log.Add(Log.LogSeverity.Error, "TaskItemViewModel.InstallMod()", "Refusing to install: mod has unsafe id/version/parent: id=" + mod.id + " version=" + mod.version + " parent=" + mod.parent);
+                        CancelTaskCommand();
+                        throw new TaskCanceledException();
+                    }
+                    foreach (var pkg in mod.packages)
+                    {
+                        if (pkg.folder != null && !KnUtils.IsSafePathComponent(pkg.folder))
+                        {
+                            Log.Add(Log.LogSeverity.Error, "TaskItemViewModel.InstallMod()", "Refusing to install: mod " + mod.id + " has unsafe package folder: " + pkg.folder);
+                            CancelTaskCommand();
+                            throw new TaskCanceledException();
+                        }
+                    }
+
                     List<ModFile> files = new List<ModFile>();
                     string modFolder = mod.id + "-" + mod.version;
                     string rootPack = string.Empty;
