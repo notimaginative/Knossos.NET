@@ -138,6 +138,26 @@ namespace Knossos.NET.ViewModels
                             -Main progress max value is calculated as follows: ( Number of files to download * 2 ) + 1
                              (Download, Decompression, Download banner/tile images)
                         */
+                        //Reject build metadata with traversal sequences in path-component fields. Without this guard a
+                        //malicious Nebula response (id="..\\..\\..", version="../etc"...) would poison modPath itself,
+                        //causing the IsSubPath checks on file.dest / file.filename below to validate against the poisoned base.
+                        if (!KnUtils.IsSafePathComponent(modJson.id) ||
+                            !KnUtils.IsSafePathComponent(modJson.version))
+                        {
+                            Log.Add(Log.LogSeverity.Error, "TaskItemViewModel.InstallBuild()", "Refusing to install: build has unsafe id/version: id=" + modJson.id + " version=" + modJson.version);
+                            CancelTaskCommand();
+                            throw new TaskCanceledException();
+                        }
+                        foreach (var pkg in modJson.packages)
+                        {
+                            if (pkg.folder != null && !KnUtils.IsSafePathComponent(pkg.folder))
+                            {
+                                Log.Add(Log.LogSeverity.Error, "TaskItemViewModel.InstallBuild()", "Refusing to install: build " + modJson.id + " has unsafe package folder: " + pkg.folder);
+                                CancelTaskCommand();
+                                throw new TaskCanceledException();
+                            }
+                        }
+
                         List<ModFile> files = new List<ModFile>();
                         string modFolder = modJson.id + "-" + modJson.version;
                         modPath = Knossos.GetKnossosLibraryPath() + Path.DirectorySeparatorChar + "bin" + Path.DirectorySeparatorChar + modFolder;

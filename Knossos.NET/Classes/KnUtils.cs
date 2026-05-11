@@ -656,12 +656,42 @@ namespace Knossos.NET
             {
                 var fullBase = Path.GetFullPath(basePath).TrimEnd(Path.DirectorySeparatorChar) + Path.DirectorySeparatorChar;
                 var fullTarget = Path.GetFullPath(Path.Combine(basePath, candidatePath));
-                return fullTarget.StartsWith(fullBase, StringComparison.OrdinalIgnoreCase);
+                //Windows is uniformly case-insensitive; Linux/macOS filesystems CAN be case-sensitive
+                //(always on Linux, optional on APFS), so use Ordinal there to avoid false-positives on
+                //traversal attempts that exploit case-only differences with sibling directories.
+                var comparison = IsWindows ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal;
+                return fullTarget.StartsWith(fullBase, comparison);
             }
             catch
             {
                 return false;
             }
+        }
+
+        /// <summary>
+        /// True if a string is safe to use as a single filesystem path component (no separators,
+        /// no traversal sequences, no null bytes, no drive letters, no NTFS-stripped trailing
+        /// whitespace or dots, not "." or ".."). Used to validate JSON-supplied fields like
+        /// mod.id / mod.version that get concatenated into install paths.
+        /// </summary>
+        public static bool IsSafePathComponent(string? component)
+        {
+            if (string.IsNullOrEmpty(component))
+                return false;
+            if (component == "." || component == "..")
+                return false;
+            if (component.Contains('\0'))
+                return false;
+            if (component.Contains('/') || component.Contains('\\'))
+                return false;
+            if (component.Length >= 2 && component[1] == ':')
+                return false;
+            //NTFS silently strips trailing dots/spaces — reject so "..  " or ".." don't round-trip.
+            if (component.Trim() != component)
+                return false;
+            if (component.EndsWith('.'))
+                return false;
+            return true;
         }
 
         /// <summary>
