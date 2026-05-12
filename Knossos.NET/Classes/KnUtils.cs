@@ -1101,6 +1101,12 @@ namespace Knossos.NET
                                                 Log.Add(Log.LogSeverity.Warning, "KnUtils.DecompressFileSharpCompress()", $"Skipping symlink escaping destination: {destinationPath} -> {reader.Entry.LinkTarget}");
                                                 continue;
                                             }
+
+                                            // Make sure destination parent dir exist
+                                            var symlinkParentDir = Path.GetDirectoryName(destinationPath);
+                                            if (symlinkParentDir != null && !Directory.Exists(symlinkParentDir))
+                                                Directory.CreateDirectory(symlinkParentDir);
+
                                             File.CreateSymbolicLink(destinationPath, reader.Entry.LinkTarget);
                                         }
                                         catch (Exception ex)
